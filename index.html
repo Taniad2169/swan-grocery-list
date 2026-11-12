@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swan Grocery List</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7fe',
+              100: '#e1effd',
+              200: '#c2defb',
+              300: '#8cc1f5', /* Accent Color */
+              400: '#5ba2eb',
+              500: '#3d90e0', /* Primary Color */
+              600: '#2b75c7',
+              700: '#235da3',
+              800: '#1e4f87',
+              900: '#1d436f',
+              bg: '#fafbfc'   /* Canvas Background */
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #3d90e0;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #8cc1f5;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ffffff;
+    }
+    .custom-shadow {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+    }
+    .card-hover {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .card-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 18px 32px -8px rgba(0, 0, 0, 0.25);
+    }
+  </style>
+</head>
+<body class="bg-[#3d90e0] text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-[#8cc1f5] selection:text-[#123e6b]">
+<!-- ===== WebSwan private gate: enter email, then tap 7 times. Soft lock (client-side). ===== -->
+<script>
+(function(){
+  "use strict";
+  var ALLOWED = ["thewebswann@gmail.com","taniadomingue373@gmail.com"]; // Tania's emails
+  var KEY = "ws_gate_" + (location.pathname.replace(/[^a-z0-9]/gi,"_") || "page");
+  var NEED = 7;
+  try { if (localStorage.getItem(KEY) === "open") return; } catch(e){}
+
+  var ov = document.createElement("div");
+  ov.setAttribute("role","dialog"); ov.setAttribute("aria-modal","true"); ov.setAttribute("aria-label","Private page sign in");
+  ov.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f2a4a,#2586e6);display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+  ov.innerHTML =
+    '<div style="width:100%;max-width:380px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:30px 26px;text-align:center">'
+    + '<div style="font-size:34px">🦢</div>'
+    + '<h1 style="margin:8px 0 4px;font-size:20px;color:#0f2a4a">The WebSwan</h1>'
+    + '<p id="wsg-sub" style="margin:0 0 18px;font-size:13.5px;color:#5d6b7e">Private page. Sign in with your email to continue.</p>'
+    + '<div id="wsg-step1">'
+    +   '<input id="wsg-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Your email" '
+    +     'style="width:100%;box-sizing:border-box;padding:13px 14px;font-size:16px;border:1px solid #cfe0ec;border-radius:12px;outline:none;color:#1c2533">'
+    +   '<button id="wsg-go" style="width:100%;margin-top:12px;padding:13px;font-size:15px;font-weight:700;color:#fff;background:#2586e6;border:0;border-radius:12px;cursor:pointer">Continue</button>'
+    + '</div>'
+    + '<div id="wsg-step2" style="display:none">'
+    +   '<p style="margin:0 0 14px;font-size:13.5px;color:#5d6b7e">Tap the swan <b>7 times</b> to open.</p>'
+    +   '<button id="wsg-tap" aria-label="Tap to open" style="width:120px;height:120px;font-size:52px;background:#eef6ff;border:3px solid #8cc1f5;border-radius:50%;cursor:pointer;user-select:none;-webkit-user-select:none;transition:transform .05s">🦢</button>'
+    +   '<div id="wsg-count" style="margin-top:14px;font-size:15px;font-weight:700;color:#0f2a4a">0 / 7</div>'
+    + '</div>'
+    + '<p id="wsg-msg" role="alert" style="min-height:16px;margin:12px 0 0;font-size:12.5px;color:#c62828"></p>'
+    + '</div>';
+
+  function mount(){
+    (document.body || document.documentElement).appendChild(ov);
+    try { document.documentElement.style.overflow = "hidden"; document.body.style.overflow = "hidden"; } catch(e){}
+    var email = ov.querySelector("#wsg-email"), go = ov.querySelector("#wsg-go"),
+        s1 = ov.querySelector("#wsg-step1"), s2 = ov.querySelector("#wsg-step2"),
+        tap = ov.querySelector("#wsg-tap"), count = ov.querySelector("#wsg-count"),
+        msg = ov.querySelector("#wsg-msg"), sub = ov.querySelector("#wsg-sub");
+    var taps = 0;
+    function submit(){
+      var v = (email.value || "").trim().toLowerCase();
+      if (ALLOWED.indexOf(v) === -1){ msg.textContent = "That email doesn't have access to this page."; email.focus(); return; }
+      msg.textContent = ""; s1.style.display = "none"; s2.style.display = "block";
+      sub.textContent = "Welcome back. Almost there."; tap.focus();
+    }
+    go.addEventListener("click", submit);
+    email.addEventListener("keydown", function(e){ if (e.key === "Enter") submit(); });
+    tap.addEventListener("click", function(){
+      taps++; tap.style.transform = "scale(0.92)"; setTimeout(function(){ tap.style.transform = "scale(1)"; }, 60);
+      count.textContent = Math.min(taps, NEED) + " / " + NEED;
+      if (taps >= NEED){
+        try { localStorage.setItem(KEY, "open"); } catch(e){}
+        try { document.documentElement.style.overflow = ""; document.body.style.overflow = ""; } catch(e){}
+        ov.remove();
+      }
+    });
+    setTimeout(function(){ try{ email.focus(); }catch(e){} }, 60);
+  }
+  if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+})();
+</script>
+  <header class="px-4 sm:px-6 pt-6 pb-2">
+    <div class="max-w-3xl mx-auto flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-white/95 text-[#123e6b] flex items-center justify-center text-xl shadow-lg"><i class="fa-solid fa-cart-shopping"></i></div>
+      <div>
+        <h1 class="text-2xl font-extrabold text-white tracking-tight">Swan Grocery List</h1>
+        <p class="text-xs text-white/80 font-medium">Your shopping list and running total &mdash; private to you.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 px-4 sm:px-6 py-4">
+    <div class="max-w-3xl mx-auto space-y-6">
+<div id="grocery-calc" class="bg-white rounded-3xl p-5 sm:p-6 shadow-2xl mb-8 border border-white/80">
+      <div class="flex items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#8cc1f5]/25 text-[#123e6b] flex items-center justify-center text-lg font-bold shadow-sm"><i class="fa-solid fa-calculator"></i></div>
+          <div>
+            <h3 class="text-lg font-extrabold text-slate-900">Shopping Calculator</h3>
+            <p class="text-xs text-slate-500 font-medium">Add each item and its price &mdash; see your total before the cashier.</p>
+          </div>
+        </div>
+        <button id="gc-clear" class="text-xs text-slate-400 hover:text-rose-500 font-semibold flex items-center gap-1.5 transition"><i class="fa-regular fa-trash-can"></i> Clear all</button>
+      </div>
+
+      <!-- Add row -->
+      <div class="grid grid-cols-12 gap-2 sm:gap-3">
+        <input id="gc-name" type="text" placeholder="Item (optional)" class="col-span-12 sm:col-span-5 px-3.5 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base">
+        <input id="gc-price" type="text" inputmode="decimal" placeholder="Price" aria-label="Price" class="col-span-5 sm:col-span-3 px-3.5 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base">
+        <input id="gc-qty" type="number" min="1" step="1" value="1" aria-label="Quantity" class="col-span-3 sm:col-span-2 px-3 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base text-center">
+        <button id="gc-add" class="col-span-4 sm:col-span-2 bg-[#3d90e0] hover:bg-[#2f7fcf] active:scale-95 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-1.5"><i class="fa-solid fa-plus"></i> Add</button>
+      </div>
+
+      <!-- Items list -->
+      <ul id="gc-list" class="mt-4 space-y-2"></ul>
+      <p id="gc-empty" class="mt-4 text-center text-sm text-slate-400 py-6">No items yet. Add your first item above. 🛒</p>
+
+      <!-- Totals -->
+      <div class="mt-5 pt-4 border-t border-slate-100 space-y-3">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <label class="text-sm font-semibold text-slate-600 flex items-center gap-2">Sales tax
+            <span class="relative"><input id="gc-tax" type="text" inputmode="decimal" value="0" class="w-16 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-center outline-none focus:border-[#3d90e0]">%</span>
+          </label>
+          <label class="text-sm font-semibold text-slate-600 flex items-center gap-2">Budget $
+            <input id="gc-budget" type="text" inputmode="decimal" placeholder="optional" class="w-24 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-center outline-none focus:border-[#3d90e0]">
+          </label>
+        </div>
+        <div class="flex items-center justify-between text-sm text-slate-500"><span id="gc-count">0 items</span><span id="gc-subtotal">Subtotal $0.00</span></div>
+        <div id="gc-taxrow" class="hidden items-center justify-between text-sm text-slate-500"><span>Tax</span><span id="gc-taxamt">$0.00</span></div>
+        <div class="flex items-center justify-between bg-[#8cc1f5]/20 rounded-2xl px-4 py-3">
+          <span class="text-base font-bold text-[#123e6b]">Total</span>
+          <span id="gc-total" class="text-2xl font-extrabold text-[#123e6b]">$0.00</span>
+        </div>
+        <p id="gc-budgetmsg" class="hidden text-center text-sm font-bold"></p>
+      </div>
+    </div>
+    <!-- One-time import from SwanPad -->
+    <div class="bg-white/95 rounded-3xl p-5 shadow-xl border border-white/80">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-[#8cc1f5]/25 text-[#123e6b] flex items-center justify-center"><i class="fa-solid fa-file-import"></i></div>
+        <div>
+          <h3 class="text-base font-extrabold text-slate-900">Bring your old list over</h3>
+          <p class="text-xs text-slate-500">In SwanPad, open Grocery Shopping and press &ldquo;Copy my old list&rdquo;, then paste it here once.</p>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input id="gi-paste" type="text" placeholder="Paste a list" class="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
+        <button id="gi-go" class="px-4 py-2.5 rounded-xl bg-[#123e6b] hover:bg-[#1b4f85] text-white text-xs font-bold whitespace-nowrap">Import</button>
+      </div>
+      <p id="gi-msg" class="text-[11px] text-slate-500 mt-2"></p>
+    </div>
+    </div>
+  </main>
+
+  <footer class="px-4 py-6 text-center text-[11px] text-white/70">Swan Grocery List &middot; a WebSwan tool &middot; everything stays in this browser</footer>
+<!-- Shopping calculator logic (moved out of SwanPad, Nov 11 2026) -->
+  <script>
+  (function(){
+    "use strict";
+    var KEY="swanpad_grocery_calc_v1";
+    var state={items:[],tax:0,budget:null};
+    var $=function(id){return document.getElementById(id);};
+    function load(){ try{ var r=JSON.parse(localStorage.getItem(KEY)); if(r&&typeof r==="object"){ state.items=Array.isArray(r.items)?r.items:[]; state.tax=+r.tax||0; state.budget=(r.budget==null?null:+r.budget);} }catch(e){} }
+    function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+    function money(n){ return "$"+(Math.round((n+Number.EPSILON)*100)/100).toFixed(2); }
+    function num(v){ var n=parseFloat(String(v==null?"":v).replace(/[^0-9.,-]/g,"").replace(",",".")); return isFinite(n)?n:0; }
+    function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];}); }
+    function subtotal(){ return state.items.reduce(function(a,it){ return a + num(it.price)*(it.qty||1); },0); }
+    function render(){
+      var list=$("gc-list"); if(!list) return;
+      list.innerHTML = state.items.map(function(it){
+        var line=num(it.price)*(it.qty||1);
+        return '<li class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2.5 '+(it.got?"opacity-60":"")+'">'
+          +'<button data-got="'+it.id+'" aria-label="Mark as in cart" class="w-7 h-7 shrink-0 rounded-lg border-2 '+(it.got?"bg-[#3d90e0] border-[#3d90e0] text-white":"border-slate-300 text-transparent")+' flex items-center justify-center"><i class="fa-solid fa-check text-xs"></i></button>'
+          +'<span class="flex-1 min-w-0 truncate text-sm '+(it.got?"line-through text-slate-400":"text-slate-700")+'">'+(it.qty>1?('<b>'+it.qty+'&times;</b> '):"")+esc(it.name||"Item")+'</span>'
+          +'<span class="text-sm font-semibold text-slate-800 tabular-nums">'+money(line)+'</span>'
+          +'<button data-del="'+it.id+'" aria-label="Remove item" class="w-7 h-7 shrink-0 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>'
+          +'</li>';
+      }).join("");
+      $("gc-empty").style.display = state.items.length ? "none" : "block";
+      var sub=subtotal(), taxAmt=sub*(num(state.tax)/100), total=sub+taxAmt;
+      $("gc-count").textContent = state.items.length + (state.items.length===1?" item":" items");
+      $("gc-subtotal").textContent = "Subtotal "+money(sub);
+      var taxrow=$("gc-taxrow");
+      if(num(state.tax)>0){ taxrow.classList.remove("hidden"); taxrow.classList.add("flex"); $("gc-taxamt").textContent=money(taxAmt); }
+      else { taxrow.classList.add("hidden"); taxrow.classList.remove("flex"); }
+      $("gc-total").textContent = money(total);
+      var bm=$("gc-budgetmsg");
+      if(state.budget!=null && state.budget>0){
+        var diff=state.budget-total; bm.classList.remove("hidden");
+        if(diff>=0){ bm.textContent="\u2705 "+money(diff)+" left in your budget"; bm.className="text-center text-sm font-bold text-emerald-600"; }
+        else { bm.textContent="\u26A0\uFE0F Over budget by "+money(-diff); bm.className="text-center text-sm font-bold text-rose-600"; }
+      } else { bm.classList.add("hidden"); }
+      save();
+    }
+    function addItem(){
+      var name=$("gc-name"), price=$("gc-price"), qty=$("gc-qty");
+      var p=num(price.value); if(!(p>0)){ price.focus(); price.classList.add("ring-2","ring-rose-300"); setTimeout(function(){price.classList.remove("ring-2","ring-rose-300");},800); return; }
+      var q=Math.max(1, Math.floor(num(qty.value)||1));
+      state.items.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), name:(name.value||"").trim().slice(0,60), price:p, qty:q, got:false});
+      name.value=""; price.value=""; qty.value="1"; render(); name.focus();
+    }
+    function wire(){
+      if(!$("gc-add")) return;
+      $("gc-add").addEventListener("click", addItem);
+      ["gc-name","gc-price","gc-qty"].forEach(function(id){ $(id).addEventListener("keydown", function(e){ if(e.key==="Enter") addItem(); }); });
+      $("gc-list").addEventListener("click", function(e){
+        var g=e.target.closest("[data-got]"), d=e.target.closest("[data-del]");
+        if(g){ var it=state.items.find(function(x){return x.id===g.getAttribute("data-got");}); if(it){ it.got=!it.got; render(); } }
+        else if(d){ state.items=state.items.filter(function(x){return x.id!==d.getAttribute("data-del");}); render(); }
+      });
+      $("gc-tax").addEventListener("input", function(){ state.tax=num(this.value); render(); });
+      $("gc-budget").addEventListener("input", function(){ var v=this.value.trim(); state.budget = v===""?null:num(v); render(); });
+      $("gc-clear").addEventListener("click", function(){ if(!state.items.length || confirm("Clear the whole shopping list?")){ state.items=[]; render(); } });
+      load();
+      $("gc-tax").value = state.tax||0;
+      if(state.budget!=null) $("gc-budget").value = state.budget;
+      render();
+    }
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  })();
+  </script>
+  <script>
+  (function(){
+    "use strict";
+    var KEY="swanpad_grocery_calc_v1";
+    function wire(){
+      var go=document.getElementById("gi-go"), box=document.getElementById("gi-paste"), msg=document.getElementById("gi-msg");
+      if(!go) return;
+      go.onclick=function(){
+        var raw=(box.value||"").trim();
+        if(!raw){ msg.textContent="Paste the list first."; return; }
+        var parsed=null; try{ parsed=JSON.parse(raw); }catch(e){}
+        if(!parsed||typeof parsed!=="object"||!Array.isArray(parsed.items)){ msg.textContent="That doesn't look like a SwanPad list."; return; }
+        try{ localStorage.setItem(KEY, JSON.stringify(parsed)); }catch(e){ msg.textContent="Couldn't save it in this browser."; return; }
+        msg.textContent="Imported "+parsed.items.length+" item"+(parsed.items.length===1?"":"s")+". Reloading\u2026";
+        setTimeout(function(){ location.reload(); }, 700);
+      };
+    }
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  })();
+  </script>
+
+</body>
+</html>
