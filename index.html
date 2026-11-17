@@ -147,7 +147,7 @@
           <div class="w-10 h-10 rounded-2xl bg-[#8cc1f5]/25 text-[#123e6b] flex items-center justify-center text-lg font-bold shadow-sm"><i class="fa-solid fa-calculator"></i></div>
           <div>
             <h3 class="text-lg font-extrabold text-slate-900">Shopping Calculator</h3>
-            <p class="text-xs text-slate-500 font-medium">Add each item and its price &mdash; see your total before the cashier.</p>
+            <p class="text-xs text-slate-500 font-medium">Add items now, then type each price at the store &mdash; your total updates and saves as you go.</p>
           </div>
         </div>
         <button id="gc-clear" class="text-xs text-slate-400 hover:text-rose-500 font-semibold flex items-center gap-1.5 transition"><i class="fa-regular fa-trash-can"></i> Clear all</button>
@@ -155,8 +155,8 @@
 
       <!-- Add row -->
       <div class="grid grid-cols-12 gap-2 sm:gap-3">
-        <input id="gc-name" type="text" placeholder="Item (optional)" class="col-span-12 sm:col-span-5 px-3.5 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base">
-        <input id="gc-price" type="text" inputmode="decimal" placeholder="Price" aria-label="Price" class="col-span-5 sm:col-span-3 px-3.5 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base">
+        <input id="gc-name" type="text" placeholder="Item (e.g. milk)" class="col-span-12 sm:col-span-5 px-3.5 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base">
+        <input id="gc-price" type="text" inputmode="decimal" placeholder="Price (optional)" aria-label="Price" class="col-span-5 sm:col-span-3 px-3.5 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base">
         <input id="gc-qty" type="number" min="1" step="1" value="1" aria-label="Quantity" class="col-span-3 sm:col-span-2 px-3 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40 outline-none text-base text-center">
         <button id="gc-add" class="col-span-4 sm:col-span-2 bg-[#3d90e0] hover:bg-[#2f7fcf] active:scale-95 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-1.5"><i class="fa-solid fa-plus"></i> Add</button>
       </div>
@@ -216,20 +216,10 @@
     function num(v){ var n=parseFloat(String(v==null?"":v).replace(/[^0-9.,-]/g,"").replace(",",".")); return isFinite(n)?n:0; }
     function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];}); }
     function subtotal(){ return state.items.reduce(function(a,it){ return a + num(it.price)*(it.qty||1); },0); }
-    function render(){
-      var list=$("gc-list"); if(!list) return;
-      list.innerHTML = state.items.map(function(it){
-        var line=num(it.price)*(it.qty||1);
-        return '<li class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2.5 '+(it.got?"opacity-60":"")+'">'
-          +'<button data-got="'+it.id+'" aria-label="Mark as in cart" class="w-7 h-7 shrink-0 rounded-lg border-2 '+(it.got?"bg-[#3d90e0] border-[#3d90e0] text-white":"border-slate-300 text-transparent")+' flex items-center justify-center"><i class="fa-solid fa-check text-xs"></i></button>'
-          +'<span class="flex-1 min-w-0 truncate text-sm '+(it.got?"line-through text-slate-400":"text-slate-700")+'">'+(it.qty>1?('<b>'+it.qty+'&times;</b> '):"")+esc(it.name||"Item")+'</span>'
-          +'<span class="text-sm font-semibold text-slate-800 tabular-nums">'+money(line)+'</span>'
-          +'<button data-del="'+it.id+'" aria-label="Remove item" class="w-7 h-7 shrink-0 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>'
-          +'</li>';
-      }).join("");
-      $("gc-empty").style.display = state.items.length ? "none" : "block";
+    function totals(){
       var sub=subtotal(), taxAmt=sub*(num(state.tax)/100), total=sub+taxAmt;
-      $("gc-count").textContent = state.items.length + (state.items.length===1?" item":" items");
+      var pending=state.items.filter(function(it){return !(num(it.price)>0);}).length;
+      $("gc-count").textContent = state.items.length + (state.items.length===1?" item":" items") + (pending?(" \u00b7 "+pending+" need a price"):"");
       $("gc-subtotal").textContent = "Subtotal "+money(sub);
       var taxrow=$("gc-taxrow");
       if(num(state.tax)>0){ taxrow.classList.remove("hidden"); taxrow.classList.add("flex"); $("gc-taxamt").textContent=money(taxAmt); }
@@ -241,13 +231,33 @@
         if(diff>=0){ bm.textContent="\u2705 "+money(diff)+" left in your budget"; bm.className="text-center text-sm font-bold text-emerald-600"; }
         else { bm.textContent="\u26A0\uFE0F Over budget by "+money(-diff); bm.className="text-center text-sm font-bold text-rose-600"; }
       } else { bm.classList.add("hidden"); }
+      state.items.forEach(function(it){
+        var el=document.querySelector('[data-line="'+it.id+'"]'); if(el) el.textContent = (it.qty>1 && num(it.price)>0) ? ("= "+money(num(it.price)*(it.qty||1))) : "";
+      });
       save();
+    }
+    function render(){
+      var list=$("gc-list"); if(!list) return;
+      list.innerHTML = state.items.map(function(it){
+        var hasP=num(it.price)>0;
+        return '<li class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2.5 '+(it.got?"opacity-60":"")+'">'
+          +'<button data-got="'+it.id+'" aria-label="Mark as in cart" class="w-7 h-7 shrink-0 rounded-lg border-2 '+(it.got?"bg-[#3d90e0] border-[#3d90e0] text-white":"border-slate-300 text-transparent")+' flex items-center justify-center"><i class="fa-solid fa-check text-xs"></i></button>'
+          +'<span class="flex-1 min-w-0 truncate text-sm '+(it.got?"line-through text-slate-400":"text-slate-700")+'">'+(it.qty>1?('<b>'+it.qty+'&times;</b> '):"")+esc(it.name||"Item")+'</span>'
+          +'<span data-line="'+it.id+'" class="text-xs text-slate-500 tabular-nums whitespace-nowrap"></span>'
+          +'<span class="relative shrink-0"><span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">$</span><input data-price="'+it.id+'" type="text" inputmode="decimal" placeholder="price" aria-label="Price" value="'+(hasP?esc(it.price):"")+'" class="w-20 pl-5 pr-2 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-800 text-right tabular-nums outline-none focus:border-[#3d90e0] focus:ring-2 focus:ring-[#8cc1f5]/40"></span>'
+          +'<button data-del="'+it.id+'" aria-label="Remove item" class="w-7 h-7 shrink-0 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>'
+          +'</li>';
+      }).join("");
+      $("gc-empty").style.display = state.items.length ? "none" : "block";
+      totals();
     }
     function addItem(){
       var name=$("gc-name"), price=$("gc-price"), qty=$("gc-qty");
-      var p=num(price.value); if(!(p>0)){ price.focus(); price.classList.add("ring-2","ring-rose-300"); setTimeout(function(){price.classList.remove("ring-2","ring-rose-300");},800); return; }
+      var n=(name.value||"").trim();
+      if(!n){ name.focus(); name.classList.add("ring-2","ring-rose-300"); setTimeout(function(){name.classList.remove("ring-2","ring-rose-300");},800); return; }
+      var p=num(price.value); if(!(p>0)) p=0;
       var q=Math.max(1, Math.floor(num(qty.value)||1));
-      state.items.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), name:(name.value||"").trim().slice(0,60), price:p, qty:q, got:false});
+      state.items.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), name:n.slice(0,60), price:p, qty:q, got:false});
       name.value=""; price.value=""; qty.value="1"; render(); name.focus();
     }
     function wire(){
@@ -258,6 +268,16 @@
         var g=e.target.closest("[data-got]"), d=e.target.closest("[data-del]");
         if(g){ var it=state.items.find(function(x){return x.id===g.getAttribute("data-got");}); if(it){ it.got=!it.got; render(); } }
         else if(d){ state.items=state.items.filter(function(x){return x.id!==d.getAttribute("data-del");}); render(); }
+      });
+      $("gc-list").addEventListener("input", function(e){
+        var pi=e.target.closest("[data-price]"); if(!pi) return;
+        var it=state.items.find(function(x){return x.id===pi.getAttribute("data-price");});
+        if(it){ it.price=num(pi.value); totals(); }
+      });
+      $("gc-list").addEventListener("keydown", function(e){
+        if(e.key!=="Enter" || !e.target.closest("[data-price]")) return;
+        e.preventDefault(); var all=[].slice.call($("gc-list").querySelectorAll("[data-price]")), i=all.indexOf(e.target);
+        (all[i+1]||$("gc-name")).focus();
       });
       $("gc-tax").addEventListener("input", function(){ state.tax=num(this.value); render(); });
       $("gc-budget").addEventListener("input", function(){ var v=this.value.trim(); state.budget = v===""?null:num(v); render(); });
